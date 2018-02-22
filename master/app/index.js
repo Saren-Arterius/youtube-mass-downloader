@@ -13,7 +13,11 @@ lineReader.on('line', async (line) => {
   if (!job) {
     await queue.add(config.queue_name, null, {
       jobId: id,
-      attempts: 10
+      attempts: 10,
+      backoff: {
+        type: 'exponential',
+        delay: 2000
+      }
     });
     console.log(`${id} queued`);
   }
