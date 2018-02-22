@@ -12,18 +12,14 @@ lineReader.on('line', async (line) => {
   const job = await queue.getJob(id);
   if (!job) {
     await queue.add(config.queue_name, null, {
-      jobId: id
+      jobId: id,
+      attempts: 10
     });
     console.log(`${id} queued`);
   }
 });
 
-queue.on('global:failed', (job, err) => {
-  console.log(job, err);
-});
-
 setInterval(async () => {
   const counts = await queue.getJobCounts();
   console.log(`Remaining jobs: ${JSON.stringify(counts)}`);
-}, 1000);
-
+}, 10000);

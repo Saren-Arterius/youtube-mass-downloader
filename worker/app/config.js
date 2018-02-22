@@ -6,5 +6,6 @@ module.exports = {
     db: 0
   },
   queue_name: 'download_queue',
-  rclone_base: 'WTAKO:/Test'
+  rclone_base: 'WTAKO:/YTDownloads',
+  queue_concurrent: 8
 };

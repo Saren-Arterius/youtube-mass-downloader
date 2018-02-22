@@ -6,21 +6,24 @@ const config = require('./config');
 
 const queue = new Queue(`${config.queue_name}`, {redis: config.redis});
 
-queue.process(config.queue_name, async (job, done) => {
+queue.process(config.queue_name, config.queue_concurrent, async (job, done) => {
   try {
     const ytid = job.id;
     const rcloneVideoBase = join(config.rclone_base, ytid.substr(0, 2), ytid.substr(2));
+    console.log(`[${ytid}] Starting...`);
+    await exec(`mkdir -p /tmp/${ytid}`);
     const downloadThumbnail = async () => {
-      const path = join(rcloneVideoBase, 'thumbnail.jpg');
-      console.log(`[${ytid}] Downloading thumbnail to ${path}...`);
-      await exec(`youtube-dl 'https://www.youtube.com/watch?v=${ytid}' -q --write-thumbnail --skip-download -o /tmp/${ytid}.jpg`);
-      await exec(`rclone copy /tmp/${ytid}.jpg ${path}`);
-      await exec(`rm /tmp/${ytid}.jpg`);
+      const srcPath = `/tmp/${ytid}/thumbnail.jpg`;
+      const destPath = join(rcloneVideoBase, 'thumbnail.jpg');
+      console.log(`[${ytid}] Downloading thumbnail to ${destPath}...`);
+      await exec(`youtube-dl 'https://www.youtube.com/watch?v=${ytid}' -q --write-thumbnail --skip-download -o ${srcPath}`);
+      await exec(`rclone move ${srcPath} ${rcloneVideoBase}`);
       console.log(`[${ytid}] Thumbnail downloaded.`);
     };
     const downloadMeta = async () => {
-      const path = join(rcloneVideoBase, 'info.json');
-      console.log(`[${ytid}] Downloading meta to ${path}...`);
+      const srcPath = `/tmp/${ytid}/info.json`;
+      const destPath = join(rcloneVideoBase, 'info.json');
+      console.log(`[${ytid}] Downloading meta to ${destPath}...`);
       const [stdout] = await exec(`youtube-dl 'https://www.youtube.com/watch?v=${ytid}' -q --dump-json`);
       const info = JSON.parse(stdout);
       delete info.requested_formats;
@@ -28,17 +31,14 @@ queue.process(config.queue_name, async (job, done) => {
       await job.update({
         title: info.title
       });
-      await writeFile(`/tmp/${ytid}.json`, JSON.stringify(info));
-      await exec(`rclone copy /tmp/${ytid}.json ${path}`);
-      await exec(`rm /tmp/${ytid}.json`);
+      await writeFile(srcPath, JSON.stringify(info));
+      await exec(`rclone move ${srcPath} ${rcloneVideoBase}`);
       console.log(`[${ytid}] Meta downloaded.`);
     };
     const downloadVideo = async () => {
       const path = join(rcloneVideoBase, 'video.mkv');
       console.log(`[${ytid}] Downloading video to ${path}...`);
       await exec(`youtube-dl 'https://www.youtube.com/watch?v=${ytid}' -q -o - | rclone rcat ${path}`);
-      // await exec(`rclone copy /tmp/${ytid}.mkv ${path}`);
-      // await exec(`rm /tmp/${ytid}.mkv`);
       console.log(`[${ytid}] Video downloaded.`);
     };
     await Promise.all([
@@ -46,6 +46,8 @@ queue.process(config.queue_name, async (job, done) => {
       downloadMeta(),
       downloadVideo()
     ]);
+    await exec(`rmdir /tmp/${ytid}`);
+    console.log(`[${ytid}] Download success.`);
   } catch (e) {
     console.log(e);
     done(e);
