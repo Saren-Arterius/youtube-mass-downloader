@@ -50,7 +50,7 @@ queue.process(config.queue_name, config.queue_concurrent, async (job, done) => {
     console.log(`[${ytid}] Download success.`);
   } catch (e) {
     console.log(e);
-    done(e);
+    return done(e);
   }
   done();
 });
