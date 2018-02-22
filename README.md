@@ -27,7 +27,8 @@ which means the YouTube videos are being saved in /YTDownloads of your rclone re
 # Multiple worker across computers or networks
 - Adjust `worker/app/config.js` redis config, make it possible to connect to the redis server.
 - You may also want to add authentication, see and edit `master/docker-configs/redis.conf`, `worker/app/config.js`, `master/app/config.js`
-- You are on your own
+- The worker computers should only `$ cd worker` then `$ docker-compose up`, just ignore the master.
+- Basically you are on your own.
 
 # Reliability
 This program relies on a reliable message/job queue implementation [bull](https://github.com/OptimalBits/bull/). Honestly, I don't see any reasons why video would not download except bad config, bad network and google's server problem or rate limit. 
